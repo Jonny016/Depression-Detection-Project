@@ -7,48 +7,58 @@ from keras.preprocessing.image import img_to_array
 import numpy as np
 import cv2
 import os
-import gdown
+import requests
 
 # Configuration
+MODEL_PATH = 'depression_model.h5'
+DRIVE_FILE_ID = "1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH"
 CONFIDENCE_THRESHOLD = 0.8
 MIN_FACE_SIZE = (60, 60)
-MODEL_PATH = 'depression_model.h5'
-DRIVE_FILE_ID = "1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH"  # ✅ Proper ID here
 
-# ✅ Download model from Google Drive using gdown
-def download_model_from_drive(destination):
-    url = f"https://drive.google.com/uc?id={DRIVE_FILE_ID}"
-    gdown.download(url, destination, quiet=False)
+# ✅ Download model using requests with token confirmation
+def download_model_from_google_drive(file_id, destination):
+    session = requests.Session()
+    URL = "https://docs.google.com/uc?export=download"
 
-# ✅ Load model with caching and file validation
+    response = session.get(URL, params={'id': file_id}, stream=True)
+    token = None
+    for key, value in response.cookies.items():
+        if key.startswith('download_warning'):
+            token = value
+
+    if token:
+        response = session.get(URL, params={'id': file_id, 'confirm': token}, stream=True)
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(32768):
+            if chunk:
+                f.write(chunk)
+
+# ✅ Load and validate model
 @st.cache_resource
 def download_and_load_model():
     if not os.path.exists(MODEL_PATH):
-        st.info("📥 Downloading model using gdown...")
-        download_model_from_drive(MODEL_PATH)
+        st.info("📥 Downloading model from Google Drive...")
+        download_model_from_google_drive(DRIVE_FILE_ID, MODEL_PATH)
 
-    # 🛡️ Validate that this is really an H5 file, not HTML
+    # ✅ Validate that file is not HTML
     if os.path.getsize(MODEL_PATH) < 1000000:
         try:
             with open(MODEL_PATH, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
                 if "<html" in content.lower():
-                    st.error("❌ Model download failed — received HTML instead of .h5 model.")
+                    st.error("❌ Model download failed — received HTML instead of model.")
                     st.stop()
         except:
-            st.error("❌ Model seems invalid or corrupted. Please check Drive link or re-upload.")
+            st.error("❌ File corrupted or invalid.")
             st.stop()
 
-    st.success("✅ Model ready to load!")
     return load_model(MODEL_PATH)
 
-
-# Load model and face cascade
 model = download_and_load_model()
 labels = ['Not Depressed', 'Depressed']
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Streamlit UI
 st.title("🧠 Real-Time Depression Detection")
 st.markdown("Webcam-based depression detection using deep learning.")
 
@@ -102,5 +112,4 @@ class VideoTransformer(VideoTransformerBase):
 
         return img
 
-# Start webcam stream
 webrtc_streamer(key="depression-stream", video_transformer_factory=VideoTransformer)
