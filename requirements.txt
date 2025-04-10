@@ -4,3 +4,5 @@ opencv-python
 keras
 numpy
 pillow
+streamlit-webrtc
+requests
