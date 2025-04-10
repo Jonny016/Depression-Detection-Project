@@ -1,8 +1,8 @@
 streamlit
-tensorflow
-opencv-python-headless
-keras
-numpy
-pillow
 streamlit-webrtc
+tensorflow
+keras
+opencv-python-headless
+numpy
 requests
+h5py

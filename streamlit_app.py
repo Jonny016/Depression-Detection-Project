@@ -17,7 +17,7 @@ DRIVE_FILE_ID = "1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH"
 
 # ✅ Download model from Google Drive (with confirmation token)
 def download_file_from_google_drive(file_id, destination):
-    URL = "https://drive.google.com/file/d/1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH/view?usp=sharing"
+    URL = "https://docs.google.com/uc?export=download"
     session = requests.Session()
     response = session.get(URL, params={'id': file_id}, stream=True)
     token = None
@@ -43,20 +43,20 @@ def download_and_load_model():
         download_file_from_google_drive(DRIVE_FILE_ID, MODEL_PATH)
 
         # Check if file is valid (avoid HTML download issue)
-        if os.path.getsize(MODEL_PATH) < 5000000:  # Less than 5MB? It's invalid
-            st.error("❌ Model download failed. File too small or corrupt.")
+        if os.path.getsize(MODEL_PATH) < 5000000:  # Less than 5MB? Likely corrupted
+            st.error("❌ Model download failed. File too small or invalid.")
             st.stop()
 
         st.success("✅ Model downloaded successfully!")
 
     return load_model(MODEL_PATH)
 
-# Load model
+# Load model and classifier
 model = download_and_load_model()
 labels = ['Not Depressed', 'Depressed']
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# Streamlit UI
+# UI
 st.title("🧠 Real-Time Depression Detection")
 st.markdown("Webcam-based depression detection using deep learning.")
 
