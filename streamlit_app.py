@@ -27,13 +27,21 @@ def download_and_load_model():
         st.info("📥 Downloading model using gdown...")
         download_model_from_drive(MODEL_PATH)
 
-        if os.path.getsize(MODEL_PATH) < 5000000:
-            st.error("❌ Model download failed or file too small.")
+    # 🛡️ Validate that this is really an H5 file, not HTML
+    if os.path.getsize(MODEL_PATH) < 1000000:
+        try:
+            with open(MODEL_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read()
+                if "<html" in content.lower():
+                    st.error("❌ Model download failed — received HTML instead of .h5 model.")
+                    st.stop()
+        except:
+            st.error("❌ Model seems invalid or corrupted. Please check Drive link or re-upload.")
             st.stop()
 
-        st.success("✅ Model downloaded successfully!")
-
+    st.success("✅ Model ready to load!")
     return load_model(MODEL_PATH)
+
 
 # Load model and face cascade
 model = download_and_load_model()
