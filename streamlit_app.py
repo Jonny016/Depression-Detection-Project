@@ -80,4 +80,7 @@ def predict_depression(face):
         predicted_class = np.argmax(prediction)
         if confidence < CONFIDENCE_THRESHOLD:
             return "Uncertain", confidence, (128, 128, 128)
-        label
+        label = labels[predicted_class]
+        color = (0, 255, 0) if label == 'Not Depressed' else (0, 0, 255)
+        return label, confidence, color
+    
