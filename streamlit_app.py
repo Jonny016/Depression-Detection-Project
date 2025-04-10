@@ -7,56 +7,40 @@ from keras.preprocessing.image import img_to_array
 import numpy as np
 import cv2
 import os
-import requests
+import gdown
 
 # Configuration
 CONFIDENCE_THRESHOLD = 0.8
 MIN_FACE_SIZE = (60, 60)
 MODEL_PATH = 'depression_model.h5'
-DRIVE_FILE_ID = "1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH"
+DRIVE_FILE_ID = "1OfP9oDdP4mZKUa6BFCuN2bz_spxm2LpH"  # ✅ Proper ID here
 
-# ✅ Download model from Google Drive (with confirmation token)
-def download_file_from_google_drive(file_id, destination):
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-    response = session.get(URL, params={'id': file_id}, stream=True)
-    token = None
-
-    for key, value in response.cookies.items():
-        if key.startswith('download_warning'):
-            token = value
-
-    if token:
-        params = {'id': file_id, 'confirm': token}
-        response = session.get(URL, params=params, stream=True)
-
-    with open(destination, 'wb') as f:
-        for chunk in response.iter_content(32768):
-            if chunk:
-                f.write(chunk)
+# ✅ Download model from Google Drive using gdown
+def download_model_from_drive(destination):
+    url = f"https://drive.google.com/uc?id={DRIVE_FILE_ID}"
+    gdown.download(url, destination, quiet=False)
 
 # ✅ Load model with caching and file validation
 @st.cache_resource
 def download_and_load_model():
     if not os.path.exists(MODEL_PATH):
-        st.info("📥 Downloading model from Google Drive...")
-        download_file_from_google_drive(DRIVE_FILE_ID, MODEL_PATH)
+        st.info("📥 Downloading model using gdown...")
+        download_model_from_drive(MODEL_PATH)
 
-        # Check if file is valid (avoid HTML download issue)
-        if os.path.getsize(MODEL_PATH) < 5000000:  # Less than 5MB? Likely corrupted
-            st.error("❌ Model download failed. File too small or invalid.")
+        if os.path.getsize(MODEL_PATH) < 5000000:
+            st.error("❌ Model download failed or file too small.")
             st.stop()
 
         st.success("✅ Model downloaded successfully!")
 
     return load_model(MODEL_PATH)
 
-# Load model and classifier
+# Load model and face cascade
 model = download_and_load_model()
 labels = ['Not Depressed', 'Depressed']
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-# UI
+# Streamlit UI
 st.title("🧠 Real-Time Depression Detection")
 st.markdown("Webcam-based depression detection using deep learning.")
 
