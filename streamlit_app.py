@@ -83,4 +83,8 @@ def predict_depression(face):
         label = labels[predicted_class]
         color = (0, 255, 0) if label == 'Not Depressed' else (0, 0, 255)
         return label, confidence, color
+    except Exception as e:
+        print(f"Prediction error: {e}")
+        return None, 0, None
+
     
