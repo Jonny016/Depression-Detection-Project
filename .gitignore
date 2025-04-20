@@ -1,5 +1,3 @@
 venv/
-
 *.h5
-
 depression_model.h5
