@@ -4,11 +4,7 @@ import numpy as np
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
 import gdown
-import osfrom streamlit_webrtc import webrtc_streamer
 
-st.title("Webcam Stream Example")
-
-webrtc_streamer(key="example")
 
 # Constants
 labels = ['Not Depressed', 'Depressed']
