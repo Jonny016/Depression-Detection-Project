@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
-import tempfile
 import gdown
 import os
 
@@ -14,7 +13,7 @@ MIN_FACE_SIZE = (60, 60)
 # Title
 st.title("🧠 Depression Detection App")
 
-# 📥 Google Drive se model download karo (only once)
+# 📥 Download Model from Google Drive
 @st.cache_resource
 def download_model():
     model_url = "https://drive.google.com/uc?id=17oqp2bazaHwfa5BuI8lUleO19gV4MnCI"
@@ -23,16 +22,17 @@ def download_model():
         gdown.download(model_url, output_path, quiet=False)
     return load_model(output_path)
 
-# Load Haar Cascade
+# 📦 Load Haar Cascade
 @st.cache_resource
 def load_cascade():
-    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    face_cascade = cv2.CascadeClassifier(
+        cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
     return face_cascade
 
 face_cascade = load_cascade()
 model = download_model()
 
-# Function to preprocess face
+# 🔄 Face Preprocessing
 def preprocess_face(face):
     try:
         face = cv2.resize(face, (48, 48))
@@ -44,40 +44,43 @@ def preprocess_face(face):
     except:
         return None
 
-# Function to predict
+# 🧠 Prediction
 def predict_depression(model, face):
     prediction = model.predict(face, verbose=0)[0]
     confidence = np.max(prediction)
     label = labels[np.argmax(prediction)]
     return label, confidence
 
-# App UI
+# 🎥 App Interface
 run = st.checkbox("Start Webcam")
 FRAME_WINDOW = st.image([])
 
 if run:
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        st.error("❌ Cannot access webcam. Make sure it is connected and not used by another app.")
+    else:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                st.warning("⚠️ Failed to capture from webcam.")
+                break
 
-    while run:
-        ret, frame = cap.read()
-        if not ret:
-            st.warning("Webcam not working")
-            break
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_cascade.detectMultiScale(
+                gray, scaleFactor=1.3, minNeighbors=5, minSize=MIN_FACE_SIZE)
 
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5, minSize=MIN_FACE_SIZE)
+            for (x, y, w, h) in faces:
+                face = gray[y:y+h, x:x+w]
+                processed_face = preprocess_face(face)
 
-        for (x, y, w, h) in faces:
-            face = gray[y:y+h, x:x+w]
-            processed_face = preprocess_face(face)
+                if processed_face is not None:
+                    label, confidence = predict_depression(model, processed_face)
+                    color = (0, 255, 0) if label == "Not Depressed" else (0, 0, 255)
+                    cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+                    cv2.putText(frame, f"{label} ({confidence:.2f})", (x, y - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
 
-            if processed_face is not None:
-                label, confidence = predict_depression(model, processed_face)
-                color = (0, 255, 0) if label == "Not Depressed" else (0, 0, 255)
-                cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
-                cv2.putText(frame, f"{label} ({confidence:.2f})", (x, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+            FRAME_WINDOW.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
-        FRAME_WINDOW.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-    cap.release()
+        cap.release()
