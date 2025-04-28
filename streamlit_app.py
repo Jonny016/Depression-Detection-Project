@@ -14,9 +14,9 @@ import av
 labels = ['Not Depressed', 'Depressed']
 MIN_FACE_SIZE = (60, 60)
 SMOOTHING_FRAMES = 30  # Increased number of frames for smoothing
-SMILE_THRESHOLD = 0.1  # Extremely low threshold for smile detection confidence
-MODEL_BIAS = 0.1  # Reduced bias factor
-STABILITY_THRESHOLD = 0.8  # Higher threshold for stable predictions
+SMILE_THRESHOLD = 0.3  # Increased threshold for smile detection confidence
+MODEL_BIAS = 0.2  # Increased bias factor
+STABILITY_THRESHOLD = 0.7  # Lowered threshold for stable predictions
 
 # Title
 st.title("🧠 Depression Detection App")
@@ -123,7 +123,7 @@ def get_stable_prediction(predictions):
     max_count = max(pred_counts.values())
     total_frames = len(predictions)
     
-    if max_count / total_frames >= STABILITY_THRESHOLD:  # 80% agreement required
+    if max_count / total_frames >= STABILITY_THRESHOLD:  # 70% agreement required
         stable_pred = max(pred_counts.items(), key=lambda x: x[1])[0]
         avg_conf = conf_sums[stable_pred] / pred_counts[stable_pred]
         return stable_pred, avg_conf
