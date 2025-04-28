@@ -11,9 +11,10 @@ CONFIDENCE_THRESHOLD = 0.6
 MIN_FACE_SIZE = (60, 60)
 MODEL_PATH = 'depression_model.h5'
 SMOOTHING_FRAMES = 30  # Increased number of frames for smoothing
-SMILE_THRESHOLD = 0.1  # Extremely low threshold for smile detection confidence
-MODEL_BIAS = 0.1  # Reduced bias factor
-STABILITY_THRESHOLD = 0.8  # Higher threshold for stable predictions
+SMILE_THRESHOLD = 0.4  # Further increased threshold for smile detection confidence
+MODEL_BIAS = 0.3  # Increased bias factor for depression
+STABILITY_THRESHOLD = 0.6  # Lowered threshold for stable predictions
+NEUTRAL_BIAS = 0.2  # Additional bias for neutral expressions
 
 # Load pre-trained model with error handling
 try:
@@ -147,7 +148,7 @@ def predict_depression(face_array, face_gray):
         features = detect_facial_features(face_gray)
         
         # If smile is detected, immediately classify as Not Depressed
-        if features['has_smile']:
+        if features['has_smile'] and features['smile_confidence'] > SMILE_THRESHOLD:
             label = 'Not Depressed'
             confidence = 0.8  # High confidence for smiles
             color = (0, int(255 * confidence), 0)  # Green with varying intensity
@@ -180,14 +181,14 @@ def predict_depression(face_array, face_gray):
         if not features['has_eyes']:
             depression_indicators += 1
         if features['is_neutral']:
-            depression_indicators += 1
+            depression_indicators += 2  # Increased weight for neutral expression
             
-        # Apply slight bias to model prediction
+        # Apply bias to model prediction
         if predicted_class == 0:  # Not Depressed
-            # Slightly reduce confidence for "Not Depressed" predictions
+            # Reduce confidence for "Not Depressed" predictions
             base_confidence = max(0.1, base_confidence - MODEL_BIAS)
         else:  # Depressed
-            # Slightly increase confidence for "Depressed" predictions
+            # Increase confidence for "Depressed" predictions
             base_confidence = min(1.0, base_confidence + MODEL_BIAS)
             
         # Use model prediction as primary decision
@@ -197,11 +198,11 @@ def predict_depression(face_array, face_gray):
         # Override prediction for neutral or sad faces
         if features['is_neutral'] or depression_indicators >= 2:
             label = 'Depressed'
-            confidence = max(confidence, 0.7)
+            confidence = max(confidence, 0.7 + NEUTRAL_BIAS)  # Increased confidence for neutral faces
         
         # Adjust confidence based on facial features
         if label == 'Depressed' and depression_indicators >= 2:
-            confidence = min(confidence + 0.1, 1.0)  # Boost confidence if multiple indicators
+            confidence = min(confidence + 0.2, 1.0)  # Increased boost for multiple indicators
         
         # Add to prediction history
         prediction_history.append((label, confidence))
