@@ -10,11 +10,11 @@ from collections import deque
 CONFIDENCE_THRESHOLD = 0.6
 MIN_FACE_SIZE = (60, 60)
 MODEL_PATH = 'depression_model.h5'
-SMOOTHING_FRAMES = 30  # Increased number of frames for smoothing
-SMILE_THRESHOLD = 0.4  # Further increased threshold for smile detection confidence
-MODEL_BIAS = 0.3  # Increased bias factor for depression
-STABILITY_THRESHOLD = 0.6  # Lowered threshold for stable predictions
-NEUTRAL_BIAS = 0.2  # Additional bias for neutral expressions
+SMOOTHING_FRAMES = 20  # Reduced frames for faster response
+SMILE_THRESHOLD = 0.6  # Much higher threshold for smile detection
+MODEL_BIAS = 0.5  # Much higher bias for depression
+STABILITY_THRESHOLD = 0.5  # Lower threshold for stability
+NEUTRAL_BIAS = 0.4  # Higher bias for neutral expressions
 
 # Load pre-trained model with error handling
 try:
@@ -147,62 +147,55 @@ def predict_depression(face_array, face_gray):
         # Get facial features first
         features = detect_facial_features(face_gray)
         
-        # If smile is detected, immediately classify as Not Depressed
+        # Only classify as Not Depressed if there's a very clear smile
         if features['has_smile'] and features['smile_confidence'] > SMILE_THRESHOLD:
             label = 'Not Depressed'
-            confidence = 0.8  # High confidence for smiles
-            color = (0, int(255 * confidence), 0)  # Green with varying intensity
+            confidence = 0.8
+            color = (0, int(255 * confidence), 0)
             
-            # Add to prediction history
             prediction_history.append((label, confidence))
-            
-            # Get stable prediction
             stable_label, stable_confidence = get_stable_prediction(prediction_history)
             
             if stable_label:
-                # Use the stable prediction
                 label = stable_label
                 confidence = stable_confidence
                 color = (0, int(255 * confidence), 0) if label == 'Not Depressed' else (0, 0, int(255 * confidence))
             
             return label, confidence, color, features['has_smile']
         
-        # If no smile, proceed with model prediction
+        # Default to Depressed for neutral or unclear expressions
         prediction = model.predict(face_array, verbose=0)[0]
         base_confidence = np.max(prediction)
         predicted_class = np.argmax(prediction)
         
-        # Calculate depression indicators
+        # Calculate depression indicators with higher weights
         depression_indicators = 0
         if not features['has_smile']:
-            depression_indicators += 1
+            depression_indicators += 2
         if features['droopy_eyes']:
-            depression_indicators += 1
+            depression_indicators += 2
         if not features['has_eyes']:
-            depression_indicators += 1
+            depression_indicators += 2
         if features['is_neutral']:
-            depression_indicators += 2  # Increased weight for neutral expression
+            depression_indicators += 3  # Much higher weight for neutral expression
             
-        # Apply bias to model prediction
+        # Strong bias towards depression
         if predicted_class == 0:  # Not Depressed
-            # Reduce confidence for "Not Depressed" predictions
             base_confidence = max(0.1, base_confidence - MODEL_BIAS)
         else:  # Depressed
-            # Increase confidence for "Depressed" predictions
             base_confidence = min(1.0, base_confidence + MODEL_BIAS)
             
-        # Use model prediction as primary decision
-        label = labels[predicted_class]
-        confidence = base_confidence
+        # Start with Depressed as default
+        label = 'Depressed'
+        confidence = max(base_confidence, 0.6)  # Minimum confidence for depression
         
-        # Override prediction for neutral or sad faces
-        if features['is_neutral'] or depression_indicators >= 2:
-            label = 'Depressed'
-            confidence = max(confidence, 0.7 + NEUTRAL_BIAS)  # Increased confidence for neutral faces
+        # Only override to Not Depressed if there's strong evidence
+        if depression_indicators < 2 and predicted_class == 0 and base_confidence > 0.7:
+            label = 'Not Depressed'
         
-        # Adjust confidence based on facial features
-        if label == 'Depressed' and depression_indicators >= 2:
-            confidence = min(confidence + 0.2, 1.0)  # Increased boost for multiple indicators
+        # Boost confidence for depression indicators
+        if depression_indicators >= 2:
+            confidence = min(confidence + 0.3, 1.0)  # Larger boost for depression indicators
         
         # Add to prediction history
         prediction_history.append((label, confidence))
@@ -211,15 +204,14 @@ def predict_depression(face_array, face_gray):
         stable_label, stable_confidence = get_stable_prediction(prediction_history)
         
         if stable_label:
-            # Use the stable prediction
             label = stable_label
             confidence = stable_confidence
         
         # Determine color based on prediction
         if label == 'Not Depressed':
-            color = (0, int(255 * confidence), 0)  # Green with varying intensity
+            color = (0, int(255 * confidence), 0)
         else:
-            color = (0, 0, int(255 * confidence))  # Red with varying intensity
+            color = (0, 0, int(255 * confidence))
             
         return label, confidence, color, features['has_smile']
     except Exception as e:
