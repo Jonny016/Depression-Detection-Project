@@ -25,7 +25,7 @@ st.title("🧠 Depression Detection App")
 # 📥 Download Model from Google Drive
 @st.cache_resource
 def download_model():
-    model_url = "https://drive.google.com/uc?id=17oqp2bazaHwfa5BuI8lUleO19gV4MnCI"
+    model_url = "https://drive.google.com/uc?id=1XnW9QyIcXGW7uATGTowUr6-nJLkf8m7a"
     output_path = "model.h5"
     if not os.path.exists(output_path):
         gdown.download(model_url, output_path, quiet=False)
